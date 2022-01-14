@@ -1,28 +1,54 @@
+import java.util.*;
+
 /******************************************************************************
 *  Manages one RPG fight (one encounter). 
 *
 *  @author   Daniel R. Collins (dcollins@superdan.net)
 *  @since    2016-02-10
-*  @version  1.0
 ******************************************************************************/
 
 public class FightManager {
+
+	//--------------------------------------------------------------------------
+	//  Constants
+	//--------------------------------------------------------------------------
+
+	/** Maximum number of turns allowed in a fight. */
+	private static final int MAX_TURNS = 20;
 
 	//--------------------------------------------------------------------------
 	//  Fields
 	//--------------------------------------------------------------------------
 
 	/** Report play-by-play action for fights. */
-	static boolean reportPlayByPlay;
+	private static boolean reportPlayByPlay = false;
+
+	/** Count turns/rounds in current fight. */
+	private int turnCount;
+
+	/** First party in this fight. */
+	private Party party1;
+	
+	/** Second party in this fight. */
+	private Party party2;
 
 	//--------------------------------------------------------------------------
 	//  Constructor
 	//--------------------------------------------------------------------------
 
 	/**
-	*  Basic constructor
+	*  Constructor for parties
 	*/
-	FightManager () {
+	FightManager (Party party1, Party party2) {
+		this.party1 = party1;
+		this.party2 = party2;
+	}
+	
+	/**
+	*  Constructor for solo monsters
+	*/
+	FightManager (Monster mon1, Monster mon2) {
+		this(new Party(mon1), new Party(mon2));	
 	}
 
 	//--------------------------------------------------------------------------
@@ -32,65 +58,109 @@ public class FightManager {
 	/**
 	*  Set play-by-play reporting.
 	*/
-	static public void setPlayByPlayReporting (boolean b) {
-		reportPlayByPlay = b; 
+	public static void setPlayByPlayReporting (boolean report) {
+		reportPlayByPlay = report; 
+	}
+
+	/**
+	*  Get play-by-play reporting.
+	*/
+	public static boolean getPlayByPlayReporting () {
+		return reportPlayByPlay; 
+	}
+
+	/**
+	*  Report play-by-play status. 
+	*/
+	private void reportPlayByPlay () {
+		if (reportPlayByPlay) {
+			System.out.println(this);
+		}
 	}
 
 	/**
 	*  Fight a duel between parties.
+	*  @return the winner of the fight
 	*/
-	static public void fight (Party party1, Party party2) {
+	public Party fight () {
 
 		// Prepare for battle
 		party1.prepBattle(party2);
 		party2.prepBattle(party1);
-
-		// Roll for initiative
-		if (Math.random() < 0.5) {
-			Party swap = party1;
-			party1 = party2;
-			party2 = swap;    
-		}
+		List<Party> order = getInitiativeOrder();
 
 		// Make special attacks on entry
-		reportPlayByPlay(party1, party2);
-		party1.makeSpecialAttacks(party2);
-		party2.makeSpecialAttacks(party1);
+		turnCount = 0;
+		reportPlayByPlay();
+		order.get(0).makeSpecialAttacks(order.get(1));
+		order.get(1).makeSpecialAttacks(order.get(0));
 
 		// Alternate turns
-		while (party1.isLive() && party2.isLive()) {
-			reportPlayByPlay(party1, party2);
-			party1.takeTurn(party2);
-			party2.takeTurn(party1);
+		while ((turnCount < MAX_TURNS)
+			&& party1.isLive() && party2.isLive()) 
+		{
+			turnCount++;
+			reportPlayByPlay();
+			order.get(0).takeTurn(order.get(1));
+			order.get(1).takeTurn(order.get(0));
 		}
 
-		// Victory to side still standing
-		Party winner = party1.isLive() ? party1 : party2;
-		reportVictory(winner);
-	}
-
-	/**
-	*  Fight a duel between individual monsters.
-	*/
-	static public void fight (Monster monster1, Monster monster2) {
-		fight(new Party(monster1), new Party(monster2));
-	}
-
-	/**
-	*  Report play-by-play. 
-	*/
-	static void reportPlayByPlay (Party party1, Party party2) {
+		// Call the winner
+		Party winner = callWinner();
 		if (reportPlayByPlay) {
-			System.out.println(party1 + " vs. " + party2);
+			System.out.println("* Winner is " + winner + "\n");
+		}
+		return winner;		
+	}
+
+	/**
+	*  Get parties in initiative order.
+	*/
+	private List<Party> getInitiativeOrder () {
+		List<Party> order = new ArrayList<Party>(2);
+		if (Dice.coinFlip()) {
+			order.add(party1);
+			order.add(party2);
+		}
+		else {
+			order.add(party2);
+			order.add(party1);
+		}
+		return order;
+	}
+
+	/**
+	*  Decide on the winner of a fight.
+	*/
+	private Party callWinner () {
+
+		// Get ratio alive
+		double ratioLive1 = party1.getRatioLive();
+		double ratioLive2 = party2.getRatioLive();
+		
+		// Call the winner
+		if (ratioLive1 > ratioLive2) {
+			return party1;
+		}
+		else if (ratioLive2 > ratioLive1) {
+			return party2;
+		}
+		else {
+			return Dice.coinFlip() ? party1 : party2;		
 		}
 	}
 
 	/**
-	*  Report victory. 
+	*  Get current turn count.
 	*/
-	static void reportVictory (Party winner) {
-		if (reportPlayByPlay) {
-			System.out.println("* Victory to " + winner + "\n");
-		}
+	public int getTurnCount () {
+		return turnCount;
+	}
+
+	/**
+	*  Identify this object as a string.
+	*/
+	public String toString () {
+		return party1 + " vs. " + party2;	
 	}
 }

@@ -5,7 +5,6 @@ import java.io.IOException;
 *
 *  @author   Daniel R. Collins (dcollins@superdan.net)
 *  @since    2018-12-04
-*  @version  1.0
 ******************************************************************************/
 
 public class Wands {
@@ -119,7 +118,8 @@ public class Wands {
 						if (roll == 0) {
 							float weight = w.name.contains("Staff") ? 
 								Equipment.ONE_THIRD : 0;
-							return new Equipment(w.name, weight);
+							return new Equipment(w.name, 
+								Equipment.Material.Wood, weight, 0);
 						}
 					}
 				}

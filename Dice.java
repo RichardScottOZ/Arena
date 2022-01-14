@@ -7,7 +7,6 @@ import java.util.regex.Matcher;
 *
 *  @author   Daniel R. Collins (dcollins@superdan.net)
 *  @since    2014-05-20
-*  @version  1.4
 ******************************************************************************/
 
 public class Dice {
@@ -144,6 +143,22 @@ public class Dice {
 	*/
 	public static int roll (int sides) {
 		return random.nextInt(sides) + 1;
+	}
+
+	/** 
+	*  Flip a coin from a static context.
+	*  @return true if coin is heads
+	*/
+	public static boolean coinFlip () {
+		return random.nextInt(2) == 0;	
+	}
+
+	/** 
+	*  Roll percentile dice from a static context.
+	*  @return The die-roll.
+	*/
+	public static int rollPct () {
+		return random.nextInt(100) + 1;
 	}
 
 	/** 

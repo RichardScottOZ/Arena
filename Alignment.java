@@ -3,7 +3,6 @@
 *
 *  @author   Daniel R. Collins (dcollins@superdan.net)
 *  @since    2014-05-19
-*  @version  1.0
 ******************************************************************************/
 
 public enum Alignment {
@@ -79,5 +78,17 @@ public enum Alignment {
 			default: return Chaotic;
 		}	
 	}
+	
+	/**
+	*  Randomize an alignment biased toward a given one.
+	*/
+	public static Alignment randomBias (Alignment align) {
+		switch (align) {
+			case Lawful: return randomLawfulBias();
+			case Chaotic: return randomChaoticBias();		
+			default: return randomNormal();
+		}
+	}
+	
 }
 

@@ -9,7 +9,7 @@ import java.util.*;
 *  @since    2021-12-19
 ******************************************************************************/
 
-public class SpellMemory {
+public class SpellMemory implements Iterable<Spell> {
 
 	//--------------------------------------------------------------------------
 	//  Fields
@@ -87,8 +87,19 @@ public class SpellMemory {
 			if (s.getLevel() == level)
 				count++;
 		}
-		return count;		
+		return count;
 	}	
+
+	/**
+	*  Get a random spell of a given level.
+	*/
+	private Spell getAtLevel (int level) {
+		for (Spell s: memory) {
+			if (s.getLevel() == level)
+				return s;
+		}
+		return null;			
+	}
 
 	/**
 	*  Add a random spell from index at a given level.
@@ -131,32 +142,11 @@ public class SpellMemory {
 	}
 
 	/**
-	*  Get the best (highest-level) castable attack spell.
-	*  @param area true if area-effect spell desired.
-	*  @return the best spell in memory.
-	*/
-	public Spell getBestAttackSpell (boolean areaEffect) {
-		Spell best = null;	
-		for (Spell s: memory) {
-			if (s.isCastable()
-				&& s.getMode() == Spell.Mode.Attack
-				&& s.isAreaEffect() == areaEffect)
-			{
-				if (best == null 
-					|| best.getLevel() < s.getLevel()) 
-				{
-					best = s;
-				}							
-			}
-		}	
-		return best;
-	}
-
-	/**
 	*  Add a spell by naming it.
 	*/
 	public void addByName (String name) {
-		add(SpellsIndex.getInstance().findByName(name));
+		Spell spell = SpellsIndex.getInstance().findByName(name);
+		if (spell != null) add(spell);
 	}
 
 	/**
@@ -174,6 +164,39 @@ public class SpellMemory {
 	}
 
 	/**
+	*  Lose the top character level load-out of spells.
+	*  Bound memory by next lower level daily spells.
+	*/
+	public void loseSpellLevel (int level) {
+		if (level <= 1) {
+			memory.clear();		
+			return;
+		}
+		SpellsDaily spellsDaily = SpellsDaily.getInstance();
+		int maxPower = spellsDaily.getMaxSpellLevel();
+		for (int power = 1; power <= maxPower; power++) {
+			int inMemory = countAtLevel(power);
+			int maxAllowed = spellsDaily.getSpellsDaily(level - 1, power);
+			int numToWipe = inMemory - maxAllowed;
+			for (int i = 0; i < numToWipe; i++) {
+				Spell spell = getAtLevel(power);
+				remove(spell);
+			}
+		}
+	}
+
+	/**
+	*  Are there any castable spells in this memory?
+	*/
+	public boolean hasCastableSpells () {
+		for (Spell spell: memory) {
+			if (spell.isCastable())
+				return true;
+		}
+		return false;	
+	}
+
+	/**
 	*  Identify this object as a string.
 	*/
 	public String toString () {
@@ -184,6 +207,13 @@ public class SpellMemory {
 			s += spell.getName();
 		}
 		return s;
+	}
+
+	/**
+	*	Return iterator for the iterable interface.
+	*/
+	public Iterator<Spell> iterator() {        
+		return memory.iterator();
 	}
 
 	/**

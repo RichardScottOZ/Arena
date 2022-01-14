@@ -1,5 +1,4 @@
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
 
 /******************************************************************************
 *  One character (player or non-player personae).
@@ -49,10 +48,10 @@ public class Character extends Monster {
 	String name;
 
 	/** The six ability scores. */
-	int[] abilityScore;
+	AbstractMap<Ability, Integer> abilityScores;
 
 	/** Ability score damage. */
-	int[] abilityScoreDamage;
+	AbstractMap<Ability, Integer> abilityScoreDamage;
 
 	/** List of classes with XP scores. */
 	List<ClassRecord> classList;
@@ -139,9 +138,10 @@ public class Character extends Monster {
 		age = BASE_AGE;
 		name = NameGenerator.getInstance().getRandom();
 		ClassType classType = ClassIndex.getInstance().getTypeFromName(classn);
-		abilityScore = new int[Ability.length];
+		abilityScores = new EnumMap<Ability, Integer>(Ability.class);
 		rollAbilityScores(classType, level);
-		abilityScoreDamage = new int[Ability.length];
+		abilityScoreDamage = new EnumMap<Ability, Integer>(Ability.class);
+		zeroAbilityDamage();
 		classList = new ArrayList<ClassRecord>(1);
 		equipList = new ArrayList<Equipment>(4);
 		classList.add(new ClassRecord(this, classType, level));
@@ -203,8 +203,8 @@ public class Character extends Monster {
 			rollPriorityAbilityScores(type.getAbilityPriority(), level);
 		}
 		else {		
-			for (int i = 0; i < Ability.length; i++) {
-				abilityScore[i] = ABILITY_DICE[0].roll();
+			for (Ability a: Ability.values()) {
+				abilityScores.put(a, ABILITY_DICE[0].roll());
 			}
 		}
 	}
@@ -233,10 +233,11 @@ public class Character extends Monster {
 	*  Roll boosted random ability scores as per given priority.
 	*/
 	private void rollPriorityAbilityScores(Ability[] priorityList, int level) {
-		for (int i = 0; i < Ability.length; i++) {
-			int idx = priorityList[i].ordinal();
-			abilityScore[idx] = getBoostedAbilityDice(level, i).roll();
- 		}
+		int priority = 0;
+		for (Ability a: priorityList) {
+			abilityScores.put(a, getBoostedAbilityDice(level, priority).roll());
+			priority++;
+		}
 	}
 
 	/**
@@ -271,30 +272,24 @@ public class Character extends Monster {
 	/**
 	*  Get an ability score.
 	*/
-	public int getAbilityScore (Ability ability) {
-		int idx = ability.ordinal();
-		int score = abilityScore[idx];
-		score -= abilityScoreDamage[idx];
-		if (ability == Ability.Str 
+	public int getAbilityScore (Ability a) {
+		int score = abilityScores.get(a).intValue();
+		score -= abilityScoreDamage.get(a).intValue();
+		if (a == Ability.Str 
 				&& hasFeat(Feat.ExceptionalStrength)) {
 			score += 3;
 		}
+		if (score < 0) score = 0;
 		return score;
-	}
-
-	/**
-	*  Get an ability score bonus/modifier.
-	*/
-	public int getAbilityBonus (Ability ability) {
-		int score = getAbilityScore(ability);
-		return Ability.getBonus(score);
 	}
 
 	/*
 	*  Take damage to an ability score.
 	*/
-	public void takeAbilityDamage (Ability ability, int damage) {
-		abilityScoreDamage[ability.ordinal()] += damage;	
+	protected void takeAbilityDamage (Ability a, int damage) {
+		int val = abilityScoreDamage.get(a).intValue();
+		val += damage;
+		abilityScoreDamage.put(a, Integer.valueOf(val));
 		updateStats();
 	}
 
@@ -302,9 +297,8 @@ public class Character extends Monster {
 	*  Clear any ability score damage.
 	*/
 	public void zeroAbilityDamage () {
- 		for (int i = 0; i < Ability.length; i++) {
- 			abilityScoreDamage[i] = 0;
- 		}
+		for (Ability a: Ability.values())
+			abilityScoreDamage.put(a, 0);
 	}
 
 	/*
@@ -312,10 +306,11 @@ public class Character extends Monster {
 	*/
 	private void adjustAllAbilityScores (int... modifiers) {
 		int oldCon = getAbilityScore(Ability.Con);
-		int index = 0;
-		for (int mod: modifiers) {
-			abilityScore[index] += mod;		
-			index++;
+		int idx = 0;
+		for (Ability a: Ability.values()) {
+			int val = abilityScores.get(a).intValue();
+			val += modifiers[idx];
+			abilityScores.put(a, Integer.valueOf(val));
 		}
 		handleConChange(oldCon); 
 		updateStats();
@@ -334,11 +329,16 @@ public class Character extends Monster {
 	*  Are any of our ability scores zero?
 	*  Because then we are dead.
 	*/
-	public boolean hasNullAbilityScore () {
-		for (int a: abilityScore) {
-			if (a <= 0) return true;
-		}
-		return false;
+	protected boolean hasNullAbilityScore () {
+
+		// This is a critical-path function.
+		// For performance, check only the Strength ability
+		// (c.f. Shadow Strength draining)
+		// If other ability-drain abilities arise, add here.
+		if (getAbilityScore(Ability.Str) <= 0)
+			return true;
+		else
+			return false;
 	}
 
 	/**
@@ -477,7 +477,7 @@ public class Character extends Monster {
 	/**
 	*  Find what level of magic-to-hit we can strike.
 	*/
-	public int getMagicHitLevel () {
+	protected int getMagicHitLevel () {
 		return (weaponInHand == null ? 0 : weaponInHand.getMagicBonus());
 	}
 
@@ -580,8 +580,21 @@ public class Character extends Monster {
 				bestWeapon = weaponInHand;
 			}							
 		}
-		assert(bestWeapon != null);
 		drawWeapon(bestWeapon);
+	}
+
+	/**
+	*  Lose a given piece of equipment.
+	*/
+	protected void loseEquipment (Equipment equip) {
+		assert(equip != null);
+		equipList.remove(equip);
+		if (equip == armorWorn) armorWorn = null;
+		if (equip == shieldHeld) shieldHeld = null;
+		if (equip == weaponInHand) weaponInHand = null;
+		if (equip == ringWorn) ringWorn = null;
+		if (equip == wandHeld) wandHeld = null;
+		updateStats();
 	}
 
 	/**
@@ -639,8 +652,9 @@ public class Character extends Monster {
 
 	/**
 	*  Lose a level (e.g., energy drain).
+	*  Overrides method in Monster.
 	*/
-	public void loseLevel () {
+	protected void loseLevel () {
 		int damage = maxHitPoints - hitPoints;
 		getTopClass().loseLevel();
 		updateStats();
@@ -756,7 +770,8 @@ public class Character extends Monster {
 	*/
 	void incrementRing () {
 		if (ringWorn == null) {
-			ringWorn = new Equipment("Ring of Protection", 0, 1);
+			ringWorn = new Equipment("Ring of Protection", 
+				Equipment.Material.Steel, 0, 1);
 			equipList.add(ringWorn);
 		}
 		else {
@@ -793,9 +808,8 @@ public class Character extends Monster {
 	/**
 	*	Roll a saving throw with modifier.
 	*/
-	public boolean	rollSave (SavingThrows.Type type, int modifier) {
+	protected boolean rollSave (SavingThrows.Type type, int modifier) {
 		ClassRecord bestClass = bestClassForSave(type);
-		modifier += getFixedSaveModifiers(type);
 		if (ringWorn != null)
 			modifier += ringWorn.getMagicBonus();
 		return SavingThrows.getInstance().rollSave(
@@ -838,7 +852,7 @@ public class Character extends Monster {
 	/**
 	*  Does this character have a given feat?
 	*/
-	public boolean hasFeat (Feat feat) {
+	protected boolean hasFeat (Feat feat) {
 		for (ClassRecord rec: classList) {
 			if (rec.hasFeat(feat))
 				return true;
@@ -879,7 +893,7 @@ public class Character extends Monster {
 	*  Get this character's recorded sweep rate.
 	*  Redefines dummy method in Monster class.
 	*/
-	public int getSweepRate () {
+	protected int getSweepRate () {
 		return sweepRate;
 	}
 	
@@ -958,7 +972,7 @@ public class Character extends Monster {
 	*  scaled by level and nominal men number appearing.
 	*  (Recommended for wilderness encounters only.)
 	*/
-	int getTreasureValue () {
+	public int getTreasureValue () {
 		final int avgNum = 165;
 		int level = Math.max(getLevel(), 1);
 		return MonsterTreasureTable.getInstance()
@@ -1011,51 +1025,17 @@ public class Character extends Monster {
 	}
 
 	/**
-	*  Does this character know any spells?
+	*  Get the character's spell memory, if any.
+	*  Overrides method in Monster.
+	*  Warning: This assumes a character has at most one spellcasting class.
+	*  If multiple spell classes supported, this system needs reworking.
 	*/
-	public boolean hasSpells () {
+	public SpellMemory getSpellMemory () {
 		for (ClassRecord _class: classList) {
-			if (_class.hasSpells())
-				return true;
+			if (_class.getSpellMemory() != null)
+				return _class.getSpellMemory();
 		}
-		return false;	
-	}
-
-	/**
-	*  Get the best (highest-level) castable attack spell.
-	*  Scans all classes: ignores any monster-level spells.
-	*  @param area true if area-effect spell desired.
-	*  @return the best spell in memory.
-	*/
-	public Spell getBestAttackSpell (boolean areaEffect) {
-		Spell best = null;	
-		for (ClassRecord _class: classList) {
-			if (_class.hasSpells()) {
-				Spell bestInClass = _class.getSpellMemory()
-					.getBestAttackSpell(areaEffect);
-				if (best == null
-					|| best.getLevel() < bestInClass.getLevel())
-				{
-					best = bestInClass;
-				}
-			}		
-		}
-		return best;
-	}
-
-	/**
-	*  Remove a spell from memory.
-	*  Scan all classes to find a copy to remove.
-	*/
-	public boolean wipeSpellFromMemory (Spell s) {
-		for (ClassRecord _class: classList) {
-			if (_class.hasSpells()) {
-				if (_class.getSpellMemory().remove(s))
-					return true;
-			}
-		}
-		System.err.println("ERROR: Request to wipe a spell not in character memory.");
-		return false;
+		return null;
 	}
 
 	//--------------------------------------------------------------------------
@@ -1074,12 +1054,12 @@ public class Character extends Monster {
 	*/
 	public String toString () {
 
-		// Standard stat block
+		// Basic stat string
 		String s = name + ", " + race + " " + classString(true);
 		s += ": AC " + getAC() + ", MV " + getMV() + ", HD " + getHD()
 			+ ", hp " + getHP() + ", Atk " + getAttack();
-
-		// Optional information
+		
+		// Optional stuff
 		if (printAbilities)
 			s = addClause(s, abilityString());
 		if (printPersonality)
@@ -1090,14 +1070,22 @@ public class Character extends Monster {
 			s = addClause(s, "Feats: ", toSentenceCase(featString()));
 		if (printSpells)
 			s = addClause(s, "Spells: ", toSentenceCase(spellString()));
-		
+
 		return s += ".";
 	}	
 
 	/**
+	*  Short String representation of this character.
+	*/
+	public String shortString () {
+		return name + ", " + race + " " 
+			+ classString(true) + ": hp " + getHP();
+	}
+
+	/**
 	*  String representation of all class and levels.
 	*/
-	String classString (boolean slashes) {
+	private String classString (boolean slashes) {
 		String s = "";
 		for (ClassRecord record: classList) {
 			if (slashes && s.length() > 0) s += "/";

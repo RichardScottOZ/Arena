@@ -132,7 +132,7 @@ public class Spell {
 				aoe.shape = parseShape(part[0]);
 				aoe.size = parseSize(part[1]);			
 			}
-			else System.err.println("Could not parse area: " + s);
+			else System.err.println("Could not parse spell area: " + s);
 		}
 		return aoe;
 	}
@@ -253,15 +253,51 @@ public class Spell {
 	}
 
 	/**
+	*  Expose casting max targets number.
+	*/
+	public int getMaxTargetNum () {
+		assert(casting != null);
+		return casting.getMaxTargetNum();
+	}
+
+	/**
+	*  Expose casting max target HD.
+	*/
+	public int getMaxTargetHD () { 
+		assert(casting != null);
+		return casting.getMaxTargetHD();
+	}
+		
+	/**
+	*  Expose casting energy effect.
+	*/
+	public EnergyType getEnergy () {
+		assert(casting != null);
+		return casting.getEnergy();
+	}
+		
+	/**
+	*  Expose casting condition effect.
+	*/
+	public SpecialType getCondition () {
+		assert(casting != null);
+		return casting.getCondition();
+	}
+		
+	/**
+	*  Expose casting person-only.
+	*/
+	public boolean isPersonEffect () {
+		assert(casting != null);
+		return casting.isPersonEffect();
+	}
+
+	/**
 	*  Cast this spell in-game at a given party.
 	*/
 	public void cast (int casterLevel, Party enemies) {
-		if (isCastable()) {
-			casting.cast(casterLevel, enemies);
-		}
-		else {
-			System.err.println("ERROR: Request to cast an uncastable spell.");		
-		}
+		assert(casting != null);
+		casting.cast(casterLevel, enemies);
 	}
 
 	/**

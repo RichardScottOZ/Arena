@@ -17,11 +17,11 @@ public enum SpecialType {
 	//--------------------------------------------------------------------------
 
 	NPC, Poison, Paralysis, Petrification, BloodDrain, EnergyDrain,
-	Constriction, Corrosion, Immolation, Rotting, Swallowing,
+	Constriction, Immolation, Rotting, Swallowing,
 	SilverToHit, MagicToHit, ChopImmunity, DamageReduction,
-	Multiheads, Berserking, HitBonus, Invisibility, Detection, 
-	Grabbing, SporeCloud, RockHurling, TailSpikes, Charm, Fear,
-	SaveBonus, DodgeGiants, Regeneration, StrengthDrain, Absorption,
+	ManyHeads, Berserking, HitBonus, Invisibility, Detection, 
+	Rending, SporeCloud, RockHurling, TailSpikes, Charm, Fear,
+	SaveBonus, DodgeGiants, Regeneration, StrengthDrain, FleshEating, 
 	Whirlwind, WallOfFire, ConeOfCold, AcidSpitting, Confusion, 
 	Displacement, Blinking, Phasing, CharmTouch, Dragon, 
 	FireBreath, ColdBreath, VoltBreath, AcidBreath, PoisonBreath, 
@@ -31,7 +31,9 @@ public enum SpecialType {
 	SteamBreath, Stench, ResistStench, Webs, WebMove, Sleep, 
 	Hold, Blindness, Polymorphism, Undead, Golem, Death, Spells,
 	ManyEyeFunctions, MagicResistance, MagicImmunity, UndeadImmunity,
-	Fearlessness, ProtectionFromEvil;
+	Fearlessness, ProtectionFromEvil, WoodEating, MetalEating,
+	AntimagicSphere, BlownAway, Disintegration, Coma, Stun, 
+	Feeblemind, Insanity, Hypnosis, SpellReflection;
 	
 	//--------------------------------------------------------------------------
 	//  Methods
@@ -58,19 +60,27 @@ public enum SpecialType {
 			// Spells saves
 			case Charm: case Sleep: case Confusion:
 			case Blindness: case Fear: case Polymorphism:
+			case AntimagicSphere: case Hypnosis:
 				return SavingThrows.Type.Spells; 
+				
+			// Breath saves
+			case Stench: case Rotting:
+				return SavingThrows.Type.Breath;
 
 			// Stone saves
 			case Paralysis: case Petrification: 
-			case Hold: case Webs:
+			case Hold: case Webs: case Slowing:
+			case SappingStrands:
 				return SavingThrows.Type.Stone;
 
 			// Death saves
 			case Poison: case SporeCloud: case Death:
+			case FleshEating: case BlownAway:
+			case Disintegration: case EnergyDrain:
 				return SavingThrows.Type.Death; 
 		}	
 
-		System.err.println("Error: No saveType for condition: " + this);
+		System.err.println("No saveType for condition: " + this);
 		return null;
 	}	
 	
@@ -80,9 +90,11 @@ public enum SpecialType {
 	public boolean isDisabling () {
 		switch (this) {
 			case Poison: case Paralysis: case Petrification: 
-			case Swallowing: case SporeCloud: case Absorption: 
-			case Fear: case MindBlast: case Sleep: case Charm:
-			case Hold: case Webs: case Polymorphism: case Death:
+			case SporeCloud: case FleshEating: case Fear:  case Sleep: 
+			case Charm: case Hold: case Polymorphism: case Death: 
+			case BlownAway: case Disintegration: case BrainConsumption:
+			case Coma: case Stun: case Feeblemind: case Insanity:
+			case Hypnosis:
 				return true;
 		}
 		return false;
@@ -106,7 +118,7 @@ public enum SpecialType {
 	*/
 	public boolean isGazeWeapon () {
 		switch (this) {
-			case PetrifyingGaze: case Confusion: 
+			case PetrifyingGaze: case Confusion: case Hypnosis:
 				return true;
 		}	
 		return false;
@@ -124,12 +136,24 @@ public enum SpecialType {
 	}
 
 	/**
+	*  Is this an attachment ability?
+	*/
+	public boolean isAttachmentAbility () {
+		switch (this) {
+			case BloodDrain: case Constriction: case Rending:
+				return true;
+		}	
+		return false;
+	}
+
+	/**
 	*  Is this a mental attack form?
 	*/
 	public boolean isMentalAttack () {
 		switch (this) {
 			case Charm: case Hold: case Sleep:
 			case Fear: case Confusion: case MindBlast:
+			case Hypnosis:
 				return true;
 		}	
 		return false;
@@ -140,9 +164,10 @@ public enum SpecialType {
 	*
 	*  OD&D is explicit that charm, hold, and sleep don't affect undead.
 	*  For simplicity & utility, we assume that includes any mental attack.
-	*  (1E also expands that to poison, paralysis, cold, and death spell.)
+	*  We also bar death spells, as per 1E PHB. 
+	*  (1E also generally expands it to poison, paralysis, and cold.)
 	*/
 	public boolean isUndeadImmune () {
-		return isMentalAttack();
+		return isMentalAttack() || this == Death;
 	}
 }

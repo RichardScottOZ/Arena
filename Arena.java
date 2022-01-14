@@ -5,7 +5,6 @@ import java.util.*;
 *
 *  @author   Daniel R. Collins (dcollins@superdan.net)
 *  @since    2014-05-20
-*  @version  1.13
 ******************************************************************************/
 
 public class Arena {
@@ -285,7 +284,8 @@ public class Arena {
 	*  Create a new fighter of the indicated level.
 	*/
 	Character newFighter (int level) {
-		Character f = new Character("Human", "Fighter", level, null); 
+		Character f = new Character("Human", "Fighter", level, null);
+		f.setAlignment(Alignment.randomBias(typicalAlignment));
 		f.setBasicEquipment();
 		if (baseArmorType != null) {
 			f.setArmor(Armor.makeType(baseArmorType));
@@ -314,11 +314,11 @@ public class Arena {
 		for (int i = 0; i < fighterList.size() - 1; i += 2) {
 			Party party1 = new Party(fighterList.get(i));
 			Party party2 = new Party(fighterList.get(i+1));
+			FightManager manager = new FightManager(party1, party2);
 			if (reportEveryEncounter) {
-				System.out.println("Arena event: " 
-					+ party1 + " vs. " + party2);
+				System.out.println("Arena event: "  + manager);
 			}
-			FightManager.fight(party1, party2);
+			manager.fight();
 			grantFightAwards(party1, party2, -1);
 		}
 	}
@@ -331,12 +331,12 @@ public class Arena {
 			int dungeonLevel = Math.max(fighter.getLevel(), 1);
 			Party fighters = createFighterParty(fighter, fighterPartySize);
 			Party monsters = createMonsterParty(dungeonLevel, fighterPartySize);
-			Monster chiefMonster = monsters.get(0); // for kill tally
+			FightManager manager = new FightManager(fighters, monsters);
 			if (reportEveryEncounter) {
-				System.out.println("Dungeon level " + dungeonLevel + ": " 
-					+ fighters + " vs. " + monsters);
+				System.out.println("Dungeon level " + dungeonLevel + ": " + manager);
 			}
-			FightManager.fight(fighters, monsters);
+			Monster chiefMonster = monsters.get(0); // for kill tally
+			manager.fight();
 			grantFightAwards(fighters, monsters, dungeonLevel);
 			if (fighter.horsDeCombat()) {
 				addToKillTally(chiefMonster);
@@ -393,7 +393,7 @@ public class Arena {
 	void grantFightAwards (Party party1, Party party2, int level) {
 		if (party1.isLive())
 			grantVictorAwards(party1, party2, level);
-		else if (party2.isLive())
+		if (party2.isLive())
 			grantVictorAwards(party2, party1, level);
 	}
 
@@ -452,8 +452,11 @@ public class Arena {
 	*  (Recommended for wilderness encounters only.)
 	*/
 	int treasureValueByMonster (Party party) {
-		return party.getFallen(0).getTreasureValue() 
-			* party.sizeFallen();
+		if (party.sizeFallen() == 0)
+			return 0;
+		else
+			return party.sizeFallen() 
+				* party.getFallen(0).getTreasureValue();
 	}
 
 	/**
@@ -461,11 +464,14 @@ public class Arena {
 	*  (Officially valid for underworld only.)
 	*/
 	int treasureValueByDungeon (Party party, int level) {
-		if (level < 1) { // mock arena prize by leader level
-			level = Math.max(party.getFallen(0).getLevel(), 1);
+		if (party.sizeFallen() == 0)
+			return 0;
+		else {
+			if (level < 1) // mock arena prize by leader level
+				level = Math.max(party.getFallen(0).getLevel(), 1);
+			return DungeonTreasureTable.getInstance()
+				.randomValueByLevel(level);
 		}
-		return DungeonTreasureTable.getInstance()
-			.randomValueByLevel(level);
 	} 
 
 	/**
@@ -688,10 +694,10 @@ public class Arena {
 	}
 
 	/**
-	*  Prints top fighters in list.
+	*  Get the top fighters in list.
 	*/
-	public void printTopFighters (int number) {
-		fighterList.printTopMembers(number);	
+	public List<Monster> getTopFighters (int number) {
+		return fighterList.getTopMembers(number);
 	}
 
 	/**

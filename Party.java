@@ -5,7 +5,6 @@ import java.util.*;
 *
 *  @author   Daniel R. Collins (dcollins@superdan.net)
 *  @since    2016-01-31
-*  @version  1.01
 ******************************************************************************/
 
 public class Party implements Iterable<Monster> {
@@ -146,13 +145,11 @@ public class Party implements Iterable<Monster> {
 	*  Prepare for battle against an enemy.
 	*/
 	public void prepBattle (Party enemy) {
-		if (enemy.isLive()) {
-			summonAllMinions();
-			for (Monster m: members) {
-				m.drawBestWeapon(enemy.random());
-				m.initBreathCharges();
-			} 
-		}
+		summonAllMinions();
+		for (Monster m: members) {
+			m.drawBestWeapon(enemy.random());
+			m.initBreathCharges();
+		} 
 	}
 
 	/**
@@ -171,10 +168,12 @@ public class Party implements Iterable<Monster> {
 	*/
 	public void addMonsters (String race, int number) {
 		Monster m = MonsterDatabase.getInstance().getByRace(race);
-		if (m != null) {
-			for (int i = 0; i <number; i++) {
+		if (m == null) {
+			System.err.println("Request to add monster not found in database: " + race);
+		}
+		else {
+			for (int i = 0; i < number; i++)
 				add(m.spawn());  
-			}
 		}
 	}
 
@@ -184,7 +183,7 @@ public class Party implements Iterable<Monster> {
 	public void makeSpecialAttacks (Party enemy) {
 		if (enemy.isLive()) {
 			for (Monster m: this) {
-				m.makeSpecialAttack(enemy);
+				m.makeSpecialAttack(this, enemy);
 			}
 			enemy.bringOutYourDead();
 		}
@@ -289,14 +288,16 @@ public class Party implements Iterable<Monster> {
 	}
 
 	/**
-	*  Print top number of members of party. 
+	*  Get a list of the top party members.
 	*/
-	public void printTopMembers (int number) {
+	public List<Monster> getTopMembers (int number) {
 		sortMembersDown();
-		for (int i = 0; i < number && i < members.size(); i++) {
-			System.out.println(members.get(i));				
+		number = Math.min(number, members.size());
+		List<Monster> list = new ArrayList<Monster>(number);
+		for (int i = 0; i < number; i++) {
+			list.add(members.get(i));				
 		}
-		System.out.println();
+		return list;
 	}	
 
 	/**
@@ -331,10 +332,30 @@ public class Party implements Iterable<Monster> {
 	}
 
 	/**
+	* Do all members of this party have a given conditon?
+	*/
+	public boolean allHaveCondition (SpecialType condition) {
+		for (Monster m: this) {
+			if (!m.hasCondition(condition))
+				return false;
+		}
+		return true;
+	}
+
+	/**
 	* Return iterator for the iterable interface.
 	*/
 	public Iterator<Monster> iterator() {        
 		return members.iterator();
+	}
+
+	/**
+	* Get ratio of original party still alive.
+	*/
+	public double getRatioLive () {
+		assert(!(members.isEmpty() && fallen.isEmpty()));
+		int total = members.size() + fallen.size();
+		return (double) members.size() / total;
 	}
 
 	/**
