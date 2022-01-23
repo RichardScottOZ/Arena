@@ -34,7 +34,7 @@ public class MonsterMetrics {
 	*/
 	final int MAX_OPP_LEVEL = 200;
 	final int MAX_MON_NUMBER = 500;
-	final int STANDARD_PARTY_SIZE = 5;
+	final int DEFAULT_PARTY_SIZE = 5;
 
 	//--------------------------------------------------------------------------
 	//  Inner class
@@ -77,6 +77,9 @@ public class MonsterMetrics {
 
 	/** PC level for sample fight run. */
 	int commandPartyLevel;
+
+	/** PC expected party size. */
+	int expectedPartySize;
 	
 	/** Monster number for single matchup. */
 	int commandMonsterNumber;
@@ -144,6 +147,7 @@ public class MonsterMetrics {
 		armorType = DEFAULT_ARMOR;
 		pctMagicPerLevel = DEFAULT_MAGIC_PER_LEVEL_PCT;
 		wizardFrequency = DEFAULT_WIZARD_RATIO;
+		expectedPartySize = DEFAULT_PARTY_SIZE;
 		SpellMemory.setPreferCastableSpells(true);
 	}
 
@@ -168,7 +172,7 @@ public class MonsterMetrics {
 		System.out.println("  Skips any monsters marked as having undefinable EHD (?)");
 		System.out.println("  If monster is named, measures that monster at increased fidelity.");
 		System.out.println("  Options include:");
-		System.out.println("\t-a armor worn by fighters (=l, c, or p; "
+		System.out.println("\t-a armor worn by fighters (=n, l, c, p; "
 			+ "default " + DEFAULT_ARMOR + ")");
 		System.out.println("\t-b set filename for an alternate monster database");
 		System.out.println("\t-d display equated fighter hit dice per level");
@@ -178,17 +182,19 @@ public class MonsterMetrics {
 		System.out.println("\t-g graph power per level for each monster");
 		System.out.println("\t-h assess matchup given monster number, party level (-h:#:#)");
 		System.out.println("\t-k wait for keypress to start processing");		
-		System.out.println("\t-l show suggested best level match at standard party size");		
+		System.out.println("\t-l show suggested best level match for expected-size party");
 		System.out.println("\t-m chance for magic weapon bonus per level " 
 			+ "(default =" + DEFAULT_MAGIC_PER_LEVEL_PCT + ")");
-		System.out.println("\t-n show suggested best number matches at standard party size");		
-		System.out.println("\t-p show EHD-parity win ratios vs. standard-size party");
+		System.out.println("\t-n show suggested best number matches for various levels");
+		System.out.println("\t-p show EHD-parity win ratios vs. expected-size party");
 		System.out.println("\t-q show only quick key stats in table form");
 		System.out.println("\t-r display only monsters with revised EHD from database");
 		System.out.println("\t-s show a single sample fight (optional party level, -s:#)");
 		System.out.println("\t-t make a table of best-number-match values");
 		System.out.println("\t-u display any unknown special abilities in database");
 		System.out.println("\t-w use fighter sweep attacks (by level vs. 1 HD)");
+		System.out.println("\t-x set expected size of PC party "
+			+ "(default =" + DEFAULT_PARTY_SIZE + ")");
 		System.out.println("\t-z fraction of wizards in party "
 			+ "(default =" + DEFAULT_WIZARD_RATIO + ")");
 		System.out.println();
@@ -245,6 +251,7 @@ public class MonsterMetrics {
 					case 't': makeBNMTable = true; break;
 					case 'u': displayUnknownSpecials = true; break;
 					case 'w': Character.setSweepAttacks(true); break;
+					case 'x': expectedPartySize = getParamInt(s); break;
 					case 'z': wizardFrequency = getParamInt(s); break;
 					default: exitAfterArgs = true; break;
 				}
@@ -294,6 +301,7 @@ public class MonsterMetrics {
 	private Armor.Type getArmorType (String s) {
 		if (s.length() > 3 && s.charAt(2) == '=') {
 			switch (s.charAt(3)) {
+				case 'n': return null; 
 				case 'l': return Armor.Type.Leather;
 				case 'c': return Armor.Type.Chain;
 				case 'p': return Armor.Type.Plate;
@@ -754,7 +762,7 @@ public class MonsterMetrics {
 
 		// Compute fair numbers
 		int monNumber = getBalancedMonsterNumbers(
-			monster, ftrLevel, STANDARD_PARTY_SIZE);
+			monster, ftrLevel, expectedPartySize);
 		if (monNumber <= 0)
 			return new BattleStats(-1, -1, false);
 
@@ -762,7 +770,7 @@ public class MonsterMetrics {
 		long monWins = 0;
 		long sumTurns = 0;
 		for (int fight = 0; fight < numberOfFights; fight++) {
-			Party ftrParty = makeFighterParty(ftrLevel, STANDARD_PARTY_SIZE);
+			Party ftrParty = makeFighterParty(ftrLevel, expectedPartySize);
 			Party monParty = new Party(monster, monNumber);
 			FightManager manager = new FightManager(ftrParty, monParty);
 			if (manager.fight() == monParty) monWins++;
@@ -839,8 +847,8 @@ public class MonsterMetrics {
 	*  Get monster win ratio for same-size parties.
 	*/
 	private double ratioMonstersBeatFighters(Monster monster, int ftrLevel) {
-		return ratioMonstersBeatFighters(monster, STANDARD_PARTY_SIZE, 
-			ftrLevel, STANDARD_PARTY_SIZE, false);	
+		return ratioMonstersBeatFighters(monster, expectedPartySize, 
+			ftrLevel, expectedPartySize, false);	
 	}
 
 	/**
@@ -886,7 +894,7 @@ public class MonsterMetrics {
 	*/
 	private double ratioMonstersBeatFighters(Monster monster, int monNumber, int ftrLevel) {
 		return ratioMonstersBeatFighters(monster, monNumber, 
-			ftrLevel, STANDARD_PARTY_SIZE, false);	
+			ftrLevel, expectedPartySize, false);	
 	}
 
 	/**
@@ -976,10 +984,10 @@ public class MonsterMetrics {
 		int ftrLevel = (commandPartyLevel != 0) ? 
 			commandPartyLevel : Math.min(monster.getEHD(), MAX_LEVEL);
 		int monNumber = getBalancedMonsterNumbers(
-			monster, ftrLevel, STANDARD_PARTY_SIZE);
+			monster, ftrLevel, expectedPartySize);
 		if (monNumber <= 0) 
 			monNumber = 1;
-		Party ftrParty = makeFighterParty(ftrLevel, STANDARD_PARTY_SIZE);
+		Party ftrParty = makeFighterParty(ftrLevel, expectedPartySize);
 		Party monParty = new Party(monster, monNumber);
 		FightManager manager = new FightManager(ftrParty, monParty);
 		
@@ -1009,7 +1017,7 @@ public class MonsterMetrics {
 			+ (commandMonsterNumber == 1 ? "" : "s")
 			+ " (EHD " + monster.getEHD() + ")");
 		System.out.println("Character party: "
-			+ STANDARD_PARTY_SIZE + " of level " + commandPartyLevel);
+			+ expectedPartySize + " of level " + commandPartyLevel);
 
 		// Do the assessment		
 		double winRatio = ratioMonstersBeatFighters (
