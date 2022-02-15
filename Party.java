@@ -45,7 +45,7 @@ public class Party implements Iterable<Monster> {
 	Party (Monster monster, int count) {
 		this();
 		for (int i = 0; i < count; i++) {
-			members.add(monster.spawn());		
+			members.add(monster.spawn());
 		}	
 	}
 
@@ -166,15 +166,9 @@ public class Party implements Iterable<Monster> {
 	/**
 	*  Add a number of some monster race to this party.
 	*/
-	public void addMonsters (String race, int number) {
-		Monster m = MonsterDatabase.getInstance().getByRace(race);
-		if (m == null) {
-			System.err.println("Request to add monster not found in database: " + race);
-		}
-		else {
-			for (int i = 0; i < number; i++)
-				add(m.spawn());  
-		}
+ 	public void addMonsters (Monster monster, int count) {
+		for (int i = 0; i < count; i++)
+			add(monster.spawn());  
 	}
 
 	/**
@@ -311,7 +305,8 @@ public class Party implements Iterable<Monster> {
 			// Assuming party is all one race
 			String s = members.get(0).getRace();
 			if (size() > 1) {
-				s += "s (" + size() + ")";
+				s += s.endsWith("s") ? "es" : "s";
+				s += " (" + size() + ")";
 			}
 			if (size() < 6) {
 				s += ": hp " + getHitPointList();
