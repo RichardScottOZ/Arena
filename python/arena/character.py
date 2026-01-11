@@ -161,7 +161,12 @@ class Character(Monster):
         self.weapon_in_hand = weapon
     
     def update_armor_class(self):
-        """Update armor class based on equipment."""
+        """
+        Update armor class based on equipment.
+        
+        Note: In D&D, lower AC is better. Base AC is 9, and armor/dexterity
+        reduce the AC value (e.g., plate armor -6 gives AC 3).
+        """
         ac = self.BASE_ARMOR_CLASS
         
         if self.armor_worn:
@@ -170,7 +175,7 @@ class Character(Monster):
         if self.shield_held:
             ac -= self.shield_held.get_armor_class()
         
-        # Add dexterity bonus
+        # Add dexterity bonus (positive modifier reduces AC)
         dex_mod = self.get_ability_modifier(Ability.DEXTERITY)
         ac -= dex_mod
         

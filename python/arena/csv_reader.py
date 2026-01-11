@@ -27,10 +27,11 @@ class CSVReader:
             List of rows, where each row is a list of strings
         """
         if data_dir is None:
-            # Try to find data files relative to package
+            # Try to find data files relative to package (in repository root)
             import arena
             pkg_dir = os.path.dirname(os.path.abspath(arena.__file__))
-            data_dir = os.path.join(os.path.dirname(pkg_dir), '..')
+            # Go up from arena package to python dir to repo root
+            data_dir = os.path.dirname(os.path.dirname(pkg_dir))
         
         filepath = os.path.join(data_dir, filename)
         
@@ -58,9 +59,11 @@ class CSVReader:
             List of dictionaries, where keys are column headers
         """
         if data_dir is None:
+            # Try to find data files relative to package (in repository root)
             import arena
             pkg_dir = os.path.dirname(os.path.abspath(arena.__file__))
-            data_dir = os.path.join(os.path.dirname(pkg_dir), '..')
+            # Go up from arena package to python dir to repo root
+            data_dir = os.path.dirname(os.path.dirname(pkg_dir))
         
         filepath = os.path.join(data_dir, filename)
         
