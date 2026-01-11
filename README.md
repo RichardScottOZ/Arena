@@ -1,5 +1,5 @@
-ARENA - Java Package for Simulating Original D&D Combat
-========================================================
+ARENA - Java and Python Package for Simulating Original D&D Combat
+====================================================================
 
 This code package provides routines for simulating combat in
 a tabletop Fantasy Role-Playing Game (FRPG) similar to Original D&D
@@ -11,7 +11,24 @@ many trials of the game between men and monsters. This package provides only
 command-line, text output; there are no graphics or visualizations, 
 and generally few options for output regarding individual combats. 
 
-For more usage information and full JavaDoc pages, visit:
+## Python Version
+
+A Python implementation is now available in the `python/` directory. 
+The Python version provides the core Arena functionality with a clean,
+Pythonic API while maintaining compatibility with the original CSV data files.
+
+**Quick start:**
+```bash
+cd python
+pip install -e .
+arena -n=20 -y=5
+```
+
+See `python/README.md` for full documentation of the Python implementation.
+
+## Java Version
+
+For more usage information and full JavaDoc pages for the Java version, visit:
 
 - http://www.oedgames.com/addons/houserules/software.html
 
